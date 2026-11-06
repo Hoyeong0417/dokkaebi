@@ -384,9 +384,9 @@ function formatDisplayRate(dropInfo) {
 }
 
 function formatHourlyExpected(itemName, exp) {
-  if (!exp || exp <= 0) return itemName === '엽전' ? '0 /시' : '0.0000 개/시';
+  if (!exp || exp <= 0) return itemName === '엽전' ? '0 개/시' : '0.0000 개/시';
   if (itemName === '엽전') {
-    return Math.round(exp).toLocaleString('ko-KR') + ' /시';
+    return Math.round(exp).toLocaleString('ko-KR') + ' 개/시';
   }
   if (exp >= 100) return exp.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' 개/시';
   if (exp >= 1) return exp.toLocaleString('ko-KR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' 개/시';
