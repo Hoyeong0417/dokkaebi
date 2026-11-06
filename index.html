@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>도깨비의 세계 - 사냥터 드랍 기댓값 & 효율 비교 시뮬레이터</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts (Inter) & Pretendard -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen antialiased transition-colors duration-200 selection:bg-indigo-500 selection:text-white">
+
+  <!-- =========================================================
+       상단 고정 헤더 (타이틀, 다크/라이트 모드 전환, 초기화 버튼)
+  ========================================================== -->
+  <header class="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+          <i class="fa-solid fa-dice-d20 text-white text-lg"></i>
+        </div>
+        <div class="truncate">
+          <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
+            도깨비의 세계 - 사냥터 드랍 시뮬레이터
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- 다크 / 라이트 모드 전환 버튼 -->
+        <button id="themeToggleBtn" type="button"
+          class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
+          title="다크/라이트 테마 전환">
+          <i id="themeIcon" class="fa-solid fa-sun text-sm text-amber-400"></i>
+        </button>
+
+        <!-- 설정 초기화 버튼 -->
+        <button id="resetBtn" type="button"
+          class="px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>초기화</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 비간섭 알림 메시지 박스 (alert 대체용 토스트) -->
+  <div id="toastBox"
+    class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold shadow-lg border border-slate-700 flex items-center gap-2">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastText">설정이 초기화되었습니다.</span>
+  </div>
+
+  <!-- =========================================================
+       메인 레이아웃 (상단 2개 탭 전환, 내부 스크롤 없는 전체 세로 나열)
+  ========================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 상단 탭 네비게이션 -->
+    <nav class="flex flex-col sm:flex-row rounded-2xl bg-slate-200/75 dark:bg-slate-900 p-1.5 border border-slate-300/70 dark:border-slate-800 max-w-2xl mx-auto shadow-sm gap-1.5 sm:gap-1" aria-label="시뮬레이터 기능 탭">
+      <button id="tabBtn1" type="button"
+        class="flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-calculator"></i>
+        <span>사냥터 드랍 기댓값 계산</span>
+      </button>
+      <button id="tabBtn2" type="button"
+        class="flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-scale-balanced"></i>
+        <span>사냥터별 드랍 기댓값 비교</span>
+      </button>
+    </nav>
+
+    <!-- =======================================================
+         [탭 1] 사냥터 드랍 기댓값 계산
+    ======================================================== -->
+    <section id="tabPanel1" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- [탭 1 좌측] 사냥터 & KPM 설정 + 16종 전체 세로 체크박스 리스트 -->
+        <aside class="lg:col-span-4 space-y-5">
+
+          <!-- 1. 사냥터 및 KPM 설정 카드 -->
+          <div class="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
+              <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-indigo-500"></i>
+                <span>사냥 조건 설정</span>
+              </h2>
+              <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                실시간 연동
+              </span>
+            </div>
+
+            <!-- 사냥터 선택 드롭다운 -->
+            <div class="space-y-2">
+              <label for="tab1ZoneSelect" class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <i class="fa-solid fa-location-dot text-indigo-500 text-xs"></i>
+                <span>사냥터 선택 (요구전투력)</span>
+              </label>
+              <div class="relative">
+                <select id="tab1ZoneSelect"
+                  class="w-full appearance-none rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 pl-3.5 pr-9 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none transition cursor-pointer">
+                </select>
+                <i class="fa-solid fa-chevron-down text-xs text-slate-400 pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+              </div>
+            </div>
+
+            <hr class="border-slate-100 dark:border-slate-800/80">
+
+            <!-- 분당 사냥 마릿수 (KPM) 입력 + 슬라이더 (10 ~ 300, step 1) -->
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <label for="tab1KpmInput" class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <i class="fa-solid fa-skull text-rose-500 text-xs"></i>
+                  <span>분당 사냥 마릿수 (KPM)</span>
+                </label>
+                <div class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 px-3 py-1.5 transition">
+                  <input id="tab1KpmInput" type="number" min="1" max="1000" step="1"
+                    class="w-20 bg-transparent text-right text-sm font-bold tabular-nums text-indigo-600 dark:text-indigo-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                  <span class="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1.5">마리</span>
+                </div>
+              </div>
+
+              <input id="tab1KpmSlider" type="range" min="30" max="150" step="5"
+                class="w-full h-2 rounded-lg bg-slate-200 dark:bg-slate-800 accent-indigo-600 cursor-pointer">
+
+              <div class="flex justify-between text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                <span>30</span>
+                <span>60</span>
+                <span>90</span>
+                <span>120</span>
+                <span>150</span>
+              </div>
+
+              <!-- 시간당 총 처치 마릿수 보조 표시 -->
+              <div class="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-950/70 rounded-xl px-3.5 py-2.5 border border-slate-200/70 dark:border-slate-800/80">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">시간당 총 처치 마릿수 (KPM × 60)</span>
+                <span id="tab1HourlyKillsText" class="font-extrabold tabular-nums text-indigo-600 dark:text-indigo-400">3,600 마리/시간</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 드랍 아이템 세로 체크박스 리스트 (내부 휠 스크롤 없이 16종 전체 나열) -->
+          <div class="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-cyan-500"></i>
+                <span>드랍 아이템 체크리스트</span>
+              </h3>
+              <span id="tab1SelectedCountBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 tabular-nums">
+                16 / 16개 선택
+              </span>
+            </div>
+
+            <!-- 일괄 선택 컨트롤 버튼 3종 -->
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="btnSelectAll" type="button"
+                class="py-2 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition">
+                전체 선택
+              </button>
+              <button id="btnSelectNone" type="button"
+                class="py-2 px-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition">
+                전체 해제
+              </button>
+              <button id="btnSelectNonZero" type="button"
+                class="py-2 px-2 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 transition"
+                title="드랍률이 0%보다 큰 품목만 선택">
+                드랍 품목만
+              </button>
+            </div>
+
+            <!-- 16개 아이템 전체 세로 나열 영역 (내부 스크롤 없음) -->
+            <div id="tab1ItemChecklist" class="space-y-2">
+              <!-- JS에서 동적 렌더링 -->
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- [탭 1 우측] 체크된 아이템 기댓값 분석 테이블 -->
+        <section class="lg:col-span-8 space-y-5">
+          <div class="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gem text-indigo-500"></i>
+                    <span>선택 아이템 드랍 기댓값 분석표</span>
+                  </h2>
+                  <span id="tab1ZoneBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                    귀명촌 · 고갯마루 (960k)
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  원본 소수점 6자리 드랍률 그대로 시간당 기대 획득량, 1개 평균 소요시간 및 평균 소요 마릿수를 산출합니다.
+                </p>
+              </div>
+
+              <div class="rounded-xl bg-slate-100 dark:bg-slate-950 px-3.5 py-2 border border-slate-200 dark:border-slate-800 text-right shrink-0 self-start sm:self-auto">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">시간당 총 처치 기준</div>
+                <div id="tab1BannerHourlyKills" class="text-sm font-extrabold tabular-nums text-indigo-600 dark:text-indigo-400">3,600 마리/시간</div>
+              </div>
+            </div>
+
+            <!-- 기댓값 분석 결과 테이블 (내부 휠 스크롤 없이 전체 세로 나열) -->
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[680px] text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th class="py-3 pr-4">아이템</th>
+                    <th class="py-3 px-3 text-right">드랍률</th>
+                    <th class="py-3 px-3 text-right">시간당 기대 획득량</th>
+                    <th class="py-3 px-3 text-right">1개 평균 소요시간</th>
+                    <th class="py-3 pl-3 text-right">1개 평균 소요 마릿수</th>
+                  </tr>
+                </thead>
+                <tbody id="tab1ResultTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/70 text-sm tabular-nums">
+                  <!-- JS에서 동적 렌더링 -->
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </section>
+
+    <!-- =======================================================
+         [탭 2] 사냥터별 드랍 기댓값 비교 (A vs B)
+    ======================================================== -->
+    <section id="tabPanel2" class="space-y-6 hidden">
+
+      <!-- 상단 비교 설정 카드 영역: 사냥터 A + 중앙 스왑 버튼 + 사냥터 B -->
+      <div class="grid grid-cols-1 lg:grid-cols-11 gap-4 items-center">
+
+        <!-- 비교 사냥터 [A] 카드 -->
+        <div class="lg:col-span-5 rounded-2xl bg-white dark:bg-slate-900/90 border-2 border-indigo-500/35 dark:border-indigo-500/40 p-5 sm:p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shadow-sm">
+                A
+              </span>
+              <div>
+                <h2 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">기준 사냥터 A</h2>
+                <p id="tab2ZoneACpText" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">요구전투력 735k</p>
+              </div>
+            </div>
+            <!-- 카드 오른쪽 위 시간당 마릿수 배지 추가 -->
+            <div id="tab2HourlyKillsA" class="text-xs font-extrabold tabular-nums px-3 py-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
+              5,100 마리/시간
+            </div>
+          </div>
+
+          <!-- 사냥터 A 드롭다운 -->
+          <div class="space-y-1.5">
+            <label for="tab2ZoneASelect" class="text-xs font-semibold text-slate-600 dark:text-slate-300 block">사냥터 선택</label>
+            <div class="relative">
+              <select id="tab2ZoneASelect"
+                class="w-full appearance-none rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 pl-3.5 pr-9 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none transition cursor-pointer">
+              </select>
+              <i class="fa-solid fa-chevron-down text-xs text-slate-400 pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+            </div>
+          </div>
+
+          <!-- 사냥터 A KPM 입력 + 슬라이더 -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <label for="tab2KpmAInput" class="text-xs font-semibold text-slate-600 dark:text-slate-300">분당 사냥 마릿수 (KPM)</label>
+              <div class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus-within:border-indigo-500 px-3 py-1 transition">
+                <input id="tab2KpmAInput" type="number" min="1" max="1000" step="1"
+                  class="w-20 bg-transparent text-right text-sm font-bold tabular-nums text-indigo-600 dark:text-indigo-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                <span class="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1.5">마리</span>
+              </div>
+            </div>
+
+            <input id="tab2KpmASlider" type="range" min="30" max="150" step="5"
+              class="w-full h-2 rounded-lg bg-slate-200 dark:bg-slate-800 accent-indigo-600 cursor-pointer">
+            <div class="flex justify-between text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+              <span>30</span>
+              <span>60</span>
+              <span>90</span>
+              <span>120</span>
+              <span>150</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 중앙 A ⇄ B 맞바꾸기 스왑 버튼 -->
+        <div class="lg:col-span-1 flex justify-center">
+          <button id="swapZonesBtn" type="button"
+            class="px-4 py-2.5 lg:p-3.5 rounded-2xl bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm transition flex items-center gap-2 font-bold text-xs"
+            title="사냥터 A와 사냥터 B 맞바꾸기">
+            <i class="fa-solid fa-right-left text-indigo-500 text-sm"></i>
+          </button>
+        </div>
+
+        <!-- 비교 사냥터 [B] 카드 -->
+        <div class="lg:col-span-5 rounded-2xl bg-white dark:bg-slate-900/90 border-2 border-cyan-500/35 dark:border-cyan-500/40 p-5 sm:p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-cyan-600 text-white text-xs font-extrabold flex items-center justify-center shadow-sm">
+                B
+              </span>
+              <div>
+                <h2 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">비교 사냥터 B</h2>
+                <p id="tab2ZoneBCpText" class="text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">요구전투력 695k</p>
+              </div>
+            </div>
+            <!-- 카드 오른쪽 위 시간당 마릿수 배지 추가 -->
+            <div id="tab2HourlyKillsB" class="text-xs font-extrabold tabular-nums px-3 py-1.5 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+              3,600 마리/시간
+            </div>
+          </div>
+
+          <!-- 사냥터 B 드롭다운 -->
+          <div class="space-y-1.5">
+            <label for="tab2ZoneBSelect" class="text-xs font-semibold text-slate-600 dark:text-slate-300 block">사냥터 선택</label>
+            <div class="relative">
+              <select id="tab2ZoneBSelect"
+                class="w-full appearance-none rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 pl-3.5 pr-9 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none transition cursor-pointer">
+              </select>
+              <i class="fa-solid fa-chevron-down text-xs text-slate-400 pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+            </div>
+          </div>
+
+          <!-- 사냥터 B KPM 입력 + 슬라이더 -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <label for="tab2KpmBInput" class="text-xs font-semibold text-slate-600 dark:text-slate-300">분당 사냥 마릿수 (KPM)</label>
+              <div class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus-within:border-cyan-500 px-3 py-1 transition">
+                <input id="tab2KpmBInput" type="number" min="1" max="1000" step="1"
+                  class="w-20 bg-transparent text-right text-sm font-bold tabular-nums text-cyan-600 dark:text-cyan-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                <span class="text-xs font-medium text-slate-500 dark:text-slate-400 ml-1.5">마리</span>
+              </div>
+            </div>
+
+            <input id="tab2KpmBSlider" type="range" min="30" max="150" step="5"
+              class="w-full h-2 rounded-lg bg-slate-200 dark:bg-slate-800 accent-cyan-500 cursor-pointer">
+            <div class="flex justify-between text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+              <span>30</span>
+              <span>60</span>
+              <span>90</span>
+              <span>120</span>
+              <span>150</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 하단 16종 전체 드랍 아이템 세로 비교 테이블 -->
+      <div class="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-table-columns text-indigo-500"></i>
+              <span>드랍 아이템별 시간당 기댓값 & 우위 비교표</span>
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              각 사냥터의 분당 마릿수(KPM)와 소수점 6자리 드랍률을 곱한 시간당 기대 획득량을 정밀 비교합니다.
+            </p>
+          </div>
+
+          <!-- 우위 품목 요약 카운트 배지 -->
+          <div id="tab2SummaryBadges" class="flex items-center gap-2 flex-wrap text-xs font-bold tabular-nums">
+            <!-- JS에서 동적 렌더링 -->
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[740px] text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <th class="py-3 pr-4">아이템</th>
+                <th id="thExpA" class="py-3 px-4 text-right text-indigo-600 dark:text-indigo-400">A · 사냥터 기대 획득</th>
+                <th id="thExpB" class="py-3 px-4 text-right text-cyan-600 dark:text-cyan-400">B · 사냥터 기대 획득</th>
+                <th class="py-3 pl-4 text-right w-52">비교 우위 (% 차이)</th>
+              </tr>
+            </thead>
+            <tbody id="tab2CompareTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/70 text-sm tabular-nums">
+              <!-- JS에서 16종 전체 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       자바스크립트 영역 (CONFIG 설정 객체 + 정밀 계산 및 렌더링 로직)
+  ========================================================== -->
+  <script>
+    /**
+     * =========================================================================
+     * [사용자 커스터마이징 설정 객체 - CONFIG]
+     * 1. itemImages: 16종 아이템별 아이콘 이미지 파일 경로 또는 웹 URL을 지정합니다.
+     *    - 로컬 폴더(예: 'images/정기단.png')에 이미지를 넣거나 이미지 URL을 입력하면
+     *      탭 1과 탭 2의 모든 36×36 슬롯 박스에 즉시 이미지가 표시됩니다.
+     *    - 이미지 파일이 아직 없거나 로드에 실패(onerror)하면 자동으로 깔끔한 아이콘
+     *      플레이스홀더 박스가 대신 나타납니다.
+     * 2. items: 화면에 표시될 16종 드랍 아이템의 순서 배열입니다.
+     * 3. zones: 12개 사냥터 정보 및 소수점 6자리 원본 드랍률(단위: %) 데이터입니다.
+     * =========================================================================
+     */
+    const CONFIG = {
+      defaultTheme: 'dark',
+
+      // KPM 입력창 및 슬라이더 동작 범위 설정
+      kpmControl: {
+        inputMin: 1,
+        inputMax: 1000,
+        sliderMin: 10,
+        sliderMax: 300,
+        sliderStep: 1
+      },
+
+      // 초기 접속 및 초기화 버튼 클릭 시 기본값
+      defaults: {
+        tab1ZoneId: 'zone_0', // 귀명촌 · 고갯마루 (960k)
+        tab1Kpm: 60,
+        tab2ZoneAId: 'zone_2', // 귀명촌 · 동구밖 (735k)
+        tab2KpmA: 55,
+        tab2ZoneBId: 'zone_3', // 귀명촌 · 동구밖 (695k)
+        tab2KpmB: 60
+      },
+
+      // 16종 아이템 이미지 경로 맵 (필요 시 웹 URL 또는 다른 폴더 경로로 자유롭게 수정 가능)
+      itemImages: {
+        "도술 강화 요령서 (12종)": "images/도술 강화 요령서.png",
+        "전설 장비 강화 비법서": "images/전설 장비 강화 비법서.png",
+        "전설 무기 도안 (5종)": "images/전설 무기 도안.png",
+        "정기단": "images/정기단.png",
+        "영기단": "images/영기단.png",
+        "천지단": "images/천지단.png",
+        "조화단": "images/조화단.png",
+        "단이 담긴 상자": "images/단이 담긴 상자.png",
+        "희귀 제작 재료 (4종)": "images/희귀 제작 재료.png",
+        "영웅 제작 재료 (4종)": "images/영웅 제작 재료.png",
+        "희귀 장비 (11종)": "images/희귀 장비.png",
+        "영기 수련 가속권 (5분)": "images/영기 수련 가속권 (5분).png",
+        "영기 수련 가속권 (10분)": "images/영기 수련 가속권 (10분).png",
+        "만귀령패 [쉬움]": "images/만귀령패 [쉬움].png",
+        "만귀령패 [보통]": "images/만귀령패 [보통].png",
+        "만귀령패 [어려움]": "images/만귀령패 [어려움].png"
+      },
+
+      // 16종 드랍 아이템 고정 표시 순서
+      items: [
+        "도술 강화 요령서 (12종)",
+        "전설 장비 강화 비법서",
+        "전설 무기 도안 (5종)",
+        "정기단",
+        "영기단",
+        "천지단",
+        "조화단",
+        "단이 담긴 상자",
+        "희귀 제작 재료 (4종)",
+        "영웅 제작 재료 (4종)",
+        "희귀 장비 (11종)",
+        "영기 수련 가속권 (5분)",
+        "영기 수련 가속권 (10분)",
+        "만귀령패 [쉬움]",
+        "만귀령패 [보통]",
+        "만귀령패 [어려움]"
+      ],
+
+      // 12개 사냥터 정밀 드랍률 테이블 (단위: %, 종류 수 합산 배율 반영 완료)
+      zones: [
+        {
+          "id": "zone_0",
+          "name": "귀명촌 · 고갯마루",
+          "cp": "960k",
+          "label": "귀명촌 · 고갯마루 (960k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.113172,
+            "전설 장비 강화 비법서": 0.13012,
+            "전설 무기 도안 (5종)": 0.000525,
+            "정기단": 7.447916,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.478266,
+            "희귀 제작 재료 (4종)": 0.051212,
+            "영웅 제작 재료 (4종)": 0.00256,
+            "희귀 장비 (11종)": 0.402138,
+            "영기 수련 가속권 (5분)": 0.09374,
+            "영기 수련 가속권 (10분)": 0.174089,
+            "만귀령패 [쉬움]": 0.000014,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.000002
+          }
+        },
+        {
+          "id": "zone_1",
+          "name": "주술 결계 동굴",
+          "cp": "820k",
+          "label": "주술 결계 동굴 (820k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.103212,
+            "전설 장비 강화 비법서": 0.118657,
+            "전설 무기 도안 (5종)": 0.000475,
+            "정기단": 7.216834,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.461351,
+            "희귀 제작 재료 (4종)": 0.10242,
+            "영웅 제작 재료 (4종)": 0.00512,
+            "희귀 장비 (11종)": 0.360558,
+            "영기 수련 가속권 (5분)": 0.113252,
+            "영기 수련 가속권 (10분)": 0.155722,
+            "만귀령패 [쉬움]": 0.000014,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.000002
+          }
+        },
+        {
+          "id": "zone_2",
+          "name": "귀명촌 · 동구밖",
+          "cp": "735k",
+          "label": "귀명촌 · 동구밖 (735k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.094116,
+            "전설 장비 강화 비법서": 0.108204,
+            "전설 무기 도안 (5종)": 0.000435,
+            "정기단": 6.989375,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.423756,
+            "희귀 제작 재료 (4종)": 0.132388,
+            "영웅 제작 재료 (4종)": 0.00662,
+            "희귀 장비 (11종)": 0.323191,
+            "영기 수련 가속권 (5분)": 0.129438,
+            "영기 수련 가속권 (10분)": 0.129438,
+            "만귀령패 [쉬움]": 0.000014,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.000002
+          }
+        },
+        {
+          "id": "zone_3",
+          "name": "귀명촌 · 동구밖",
+          "cp": "695k",
+          "label": "귀명촌 · 동구밖 (695k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.085824,
+            "전설 장비 강화 비법서": 0.098672,
+            "전설 무기 도안 (5종)": 0.000395,
+            "정기단": 6.884999,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.423756,
+            "희귀 제작 재료 (4종)": 0.153632,
+            "영웅 제작 재료 (4종)": 0.007684,
+            "희귀 장비 (11종)": 0.294712,
+            "영기 수련 가속권 (5분)": 0.129438,
+            "영기 수련 가속권 (10분)": 0.129438,
+            "만귀령패 [쉬움]": 0.000014,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.000002
+          }
+        },
+        {
+          "id": "zone_4",
+          "name": "숨겨진 해골 동굴",
+          "cp": "610k",
+          "label": "숨겨진 해골 동굴 (610k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.078264,
+            "전설 장비 강화 비법서": 0.089979,
+            "전설 무기 도안 (5종)": 0.00036,
+            "정기단": 6.662433,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.400187,
+            "희귀 제작 재료 (4종)": 0.17718,
+            "영웅 제작 재료 (4종)": 0.00886,
+            "희귀 장비 (11종)": 0.264066,
+            "영기 수련 가속권 (5분)": 0.151935,
+            "영기 수련 가속권 (10분)": 0.106355,
+            "만귀령패 [쉬움]": 0.000012,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_5",
+          "name": "귀명촌 · 마을 폐허",
+          "cp": "565k",
+          "label": "귀명촌 · 마을 폐허 (565k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.071364,
+            "전설 장비 강화 비법서": 0.082052,
+            "전설 무기 도안 (5종)": 0.00033,
+            "정기단": 6.444035,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.358896,
+            "희귀 제작 재료 (4종)": 0.200068,
+            "영웅 제작 재료 (4종)": 0.010004,
+            "희귀 장비 (11종)": 0.236555,
+            "영기 수련 가속권 (5분)": 0.170062,
+            "영기 수련 가속권 (10분)": 0.077301,
+            "만귀령패 [쉬움]": 0.000012,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_6",
+          "name": "귀명촌 · 마을 어귀",
+          "cp": "530k",
+          "label": "귀명촌 · 마을 어귀 (530k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.065076,
+            "전설 장비 강화 비법서": 0.074824,
+            "전설 무기 도안 (5종)": 0.0003,
+            "정기단": 6.229262,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.301421,
+            "희귀 제작 재료 (4종)": 0.217564,
+            "영웅 제작 재료 (4종)": 0.01088,
+            "희귀 장비 (11종)": 0.211838,
+            "영기 수련 가속권 (5분)": 0.180049,
+            "영기 수련 가속권 (10분)": 0.045012,
+            "만귀령패 [쉬움]": 0.000009,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_7",
+          "name": "귀명촌 · 마을 어귀",
+          "cp": "490k",
+          "label": "귀명촌 · 마을 어귀 (490k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.056688,
+            "전설 장비 강화 비법서": 0.06518,
+            "전설 무기 도안 (5종)": 0.00026,
+            "정기단": 6.080861,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.000149,
+            "단이 담긴 상자": 0.301421,
+            "희귀 제작 재료 (4종)": 0.23166,
+            "영웅 제작 재료 (4종)": 0.011584,
+            "희귀 장비 (11종)": 0.184536,
+            "영기 수련 가속권 (5분)": 0.180049,
+            "영기 수련 가속권 (10분)": 0.045012,
+            "만귀령패 [쉬움]": 0.000009,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_8",
+          "name": "비탄의 울림",
+          "cp": "445k",
+          "label": "비탄의 울림 (445k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.051696,
+            "전설 장비 강화 비법서": 0.059438,
+            "전설 무기 도안 (5종)": 0.00024,
+            "정기단": 5.872426,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.0,
+            "단이 담긴 상자": 0.247568,
+            "희귀 제작 재료 (4종)": 0.24072,
+            "영웅 제작 재료 (4종)": 0.012036,
+            "희귀 장비 (11종)": 0.165198,
+            "영기 수련 가속권 (5분)": 0.189715,
+            "영기 수련 가속권 (10분)": 0.014594,
+            "만귀령패 [쉬움]": 0.000009,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_9",
+          "name": "비명 동굴 · 역병의 부화장",
+          "cp": "385k",
+          "label": "비명 동굴 · 역병의 부화장 (385k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.045036,
+            "전설 장비 강화 비법서": 0.051777,
+            "전설 무기 도안 (5종)": 0.00021,
+            "정기단": 5.619956,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.0,
+            "단이 담긴 상자": 0.202939,
+            "희귀 제작 재료 (4종)": 0.256048,
+            "영웅 제작 재료 (4종)": 0.012804,
+            "희귀 장비 (11종)": 0.141218,
+            "영기 수련 가속권 (5분)": 0.172302,
+            "영기 수련 가속권 (10분)": 0.0,
+            "만귀령패 [쉬움]": 0.000009,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_10",
+          "name": "요기의 동굴",
+          "cp": "370k",
+          "label": "요기의 동굴 (370k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.041064,
+            "전설 장비 강화 비법서": 0.047216,
+            "전설 무기 도안 (5종)": 0.00019,
+            "정기단": 5.437651,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.0,
+            "단이 담긴 상자": 0.161176,
+            "희귀 제작 재료 (4종)": 0.248788,
+            "영웅 제작 재료 (4종)": 0.01244,
+            "희귀 장비 (11종)": 0.126335,
+            "영기 수련 가속권 (5분)": 0.124106,
+            "영기 수련 가속권 (10분)": 0.0,
+            "만귀령패 [쉬움]": 0.000007,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        },
+        {
+          "id": "zone_11",
+          "name": "요기의 동굴",
+          "cp": "360k",
+          "label": "요기의 동굴 (360k)",
+          "drops": {
+            "도술 강화 요령서 (12종)": 0.041064,
+            "전설 장비 강화 비법서": 0.047216,
+            "전설 무기 도안 (5종)": 0.00019,
+            "정기단": 5.437651,
+            "영기단": 0.049978,
+            "천지단": 0.002498,
+            "조화단": 0.0,
+            "단이 담긴 상자": 0.161176,
+            "희귀 제작 재료 (4종)": 0.248788,
+            "영웅 제작 재료 (4종)": 0.01244,
+            "희귀 장비 (11종)": 0.126335,
+            "영기 수련 가속권 (5분)": 0.124106,
+            "영기 수련 가속권 (10분)": 0.0,
+            "만귀령패 [쉬움]": 0.000007,
+            "만귀령패 [보통]": 0.000003,
+            "만귀령패 [어려움]": 0.0
+          }
+        }
+      ]
+    };
+    /* ==================== CONFIG 설정 영역 끝 ==================== */
+
+    // 이미지가 없거나 로드 실패(onerror) 시 표시할 16종 아이템별 플레이스홀더 아이콘 스타일
+    const ITEM_PLACEHOLDER_META = {
+      "도술 강화 요령서 (12종)": {
+        icon: "fa-solid fa-book-journal-whills",
+        color: "text-amber-500 dark:text-amber-400",
+        box: "bg-amber-500/10 border-amber-500/30"
+      },
+      "전설 장비 강화 비법서": {
+        icon: "fa-solid fa-file-signature",
+        color: "text-amber-500 dark:text-amber-400",
+        box: "bg-amber-500/10 border-amber-500/30"
+      },
+      "전설 무기 도안 (5종)": {
+        icon: "fa-solid fa-scroll",
+        color: "text-amber-500 dark:text-amber-400",
+        box: "bg-amber-500/10 border-amber-500/30"
+      },
+      "정기단": {
+        icon: "fa-solid fa-circle-dot",
+        color: "text-slate-500 dark:text-slate-300",
+        box: "bg-slate-500/10 border-slate-300 dark:border-slate-700"
+      },
+      "영기단": {
+        icon: "fa-solid fa-droplet",
+        color: "text-sky-500 dark:text-sky-400",
+        box: "bg-sky-500/10 border-sky-500/30"
+      },
+      "천지단": {
+        icon: "fa-solid fa-sun",
+        color: "text-violet-500 dark:text-violet-400",
+        box: "bg-violet-500/10 border-violet-500/30"
+      },
+      "조화단": {
+        icon: "fa-solid fa-yin-yang",
+        color: "text-amber-500 dark:text-amber-400",
+        box: "bg-amber-500/10 border-amber-500/30"
+      },
+      "단이 담긴 상자": {
+        icon: "fa-solid fa-box-open",
+        color: "text-violet-500 dark:text-violet-400",
+        box: "bg-violet-500/10 border-violet-500/30"
+      },
+      "희귀 제작 재료 (4종)": {
+        icon: "fa-solid fa-cubes",
+        color: "text-sky-500 dark:text-sky-400",
+        box: "bg-sky-500/10 border-sky-500/30"
+      },
+      "영웅 제작 재료 (4종)": {
+        icon: "fa-solid fa-gem",
+        color: "text-violet-500 dark:text-violet-400",
+        box: "bg-violet-500/10 border-violet-500/30"
+      },
+      "희귀 장비 (11종)": {
+        icon: "fa-solid fa-shield-halved",
+        color: "text-sky-500 dark:text-sky-400",
+        box: "bg-sky-500/10 border-sky-500/30"
+      },
+      "영기 수련 가속권 (5분)": {
+        icon: "fa-solid fa-hourglass-half",
+        color: "text-emerald-500 dark:text-emerald-400",
+        box: "bg-emerald-500/10 border-emerald-500/30"
+      },
+      "영기 수련 가속권 (10분)": {
+        icon: "fa-solid fa-hourglass-start",
+        color: "text-emerald-500 dark:text-emerald-400",
+        box: "bg-emerald-500/10 border-emerald-500/30"
+      },
+      "만귀령패 [쉬움]": {
+        icon: "fa-solid fa-ticket",
+        color: "text-teal-500 dark:text-teal-400",
+        box: "bg-teal-500/10 border-teal-500/30"
+      },
+      "만귀령패 [보통]": {
+        icon: "fa-solid fa-ticket",
+        color: "text-violet-500 dark:text-violet-400",
+        box: "bg-violet-500/10 border-violet-500/30"
+      },
+      "만귀령패 [어려움]": {
+        icon: "fa-solid fa-ticket",
+        color: "text-rose-500 dark:text-rose-400",
+        box: "bg-rose-500/10 border-rose-500/30"
+      }
+    };
+
+    // =========================================================================
+    // 애플리케이션 런타임 상태 (State)
+    // =========================================================================
+    const state = {
+      isDark: CONFIG.defaultTheme === 'dark',
+      activeTab: 'tab1',
+
+      // 탭 1 상태 (기본값: 모든 16개 아이템 체크됨)
+      tab1ZoneId: CONFIG.defaults.tab1ZoneId,
+      tab1Kpm: CONFIG.defaults.tab1Kpm,
+      tab1CheckedItems: new Set(CONFIG.items),
+
+      // 탭 2 상태
+      tab2ZoneAId: CONFIG.defaults.tab2ZoneAId,
+      tab2KpmA: CONFIG.defaults.tab2KpmA,
+      tab2ZoneBId: CONFIG.defaults.tab2ZoneBId,
+      tab2KpmB: CONFIG.defaults.tab2KpmB
+    };
+
+    let toastTimer = null;
+
+    // DOM 요소 참조 캐시
+    const els = {
+      themeToggleBtn: document.getElementById('themeToggleBtn'),
+      themeIcon: document.getElementById('themeIcon'),
+      resetBtn: document.getElementById('resetBtn'),
+      toastBox: document.getElementById('toastBox'),
+      toastText: document.getElementById('toastText'),
+
+      tabBtn1: document.getElementById('tabBtn1'),
+      tabBtn2: document.getElementById('tabBtn2'),
+      tabPanel1: document.getElementById('tabPanel1'),
+      tabPanel2: document.getElementById('tabPanel2'),
+
+      // 탭 1 DOM
+      tab1ZoneSelect: document.getElementById('tab1ZoneSelect'),
+      tab1KpmInput: document.getElementById('tab1KpmInput'),
+      tab1KpmSlider: document.getElementById('tab1KpmSlider'),
+      tab1HourlyKillsText: document.getElementById('tab1HourlyKillsText'),
+      tab1SelectedCountBadge: document.getElementById('tab1SelectedCountBadge'),
+      btnSelectAll: document.getElementById('btnSelectAll'),
+      btnSelectNone: document.getElementById('btnSelectNone'),
+      btnSelectNonZero: document.getElementById('btnSelectNonZero'),
+      tab1ItemChecklist: document.getElementById('tab1ItemChecklist'),
+      tab1ZoneBadge: document.getElementById('tab1ZoneBadge'),
+      tab1BannerHourlyKills: document.getElementById('tab1BannerHourlyKills'),
+      tab1ResultTableBody: document.getElementById('tab1ResultTableBody'),
+
+      // 탭 2 DOM
+      tab2ZoneASelect: document.getElementById('tab2ZoneASelect'),
+      tab2ZoneACpText: document.getElementById('tab2ZoneACpText'),
+      tab2KpmAInput: document.getElementById('tab2KpmAInput'),
+      tab2KpmASlider: document.getElementById('tab2KpmASlider'),
+      tab2HourlyKillsA: document.getElementById('tab2HourlyKillsA'),
+
+      swapZonesBtn: document.getElementById('swapZonesBtn'),
+
+      tab2ZoneBSelect: document.getElementById('tab2ZoneBSelect'),
+      tab2ZoneBCpText: document.getElementById('tab2ZoneBCpText'),
+      tab2KpmBInput: document.getElementById('tab2KpmBInput'),
+      tab2KpmBSlider: document.getElementById('tab2KpmBSlider'),
+      tab2HourlyKillsB: document.getElementById('tab2HourlyKillsB'),
+
+      tab2SummaryBadges: document.getElementById('tab2SummaryBadges'),
+      thExpA: document.getElementById('thExpA'),
+      thExpB: document.getElementById('thExpB'),
+      tab2CompareTableBody: document.getElementById('tab2CompareTableBody')
+    };
+
+    // =========================================================================
+    // 유틸리티 및 정밀 포맷팅 함수
+    // =========================================================================
+
+    function getZoneById(zoneId) {
+      return CONFIG.zones.find((z) => z.id === zoneId) || CONFIG.zones[0];
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * 36×36 아이템 이미지 슬롯 박스 생성 (w-9 h-9 = 36px × 36px)
+     * CONFIG.itemImages[itemName] 이미지 로드 성공 시 이미지를 표시하고,
+     * 비어 있거나 로드 실패(onerror) 시 아이콘 플레이스홀더를 깔끔하게 표시합니다.
+     */
+    function createItemSlotHtml(itemName) {
+      const rawSrc = CONFIG.itemImages && typeof CONFIG.itemImages[itemName] === 'string'
+        ? CONFIG.itemImages[itemName].trim()
+        : '';
+      const meta = ITEM_PLACEHOLDER_META[itemName] || {
+        icon: 'fa-solid fa-cube',
+        color: 'text-slate-400',
+        box: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+      };
+
+      if (rawSrc.length > 0) {
+        return `
+          <div class="w-9 h-9 rounded-lg border ${meta.box} overflow-hidden shrink-0 flex items-center justify-center bg-white/70 dark:bg-slate-900/70">
+            <img src="${escapeHtml(rawSrc)}" alt="${escapeHtml(itemName)}"
+              class="w-full h-full object-contain"
+              onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+            <i class="${meta.icon} ${meta.color} text-sm hidden"></i>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="w-9 h-9 rounded-lg border ${meta.box} overflow-hidden shrink-0 flex items-center justify-center">
+          <i class="${meta.icon} ${meta.color} text-sm"></i>
+        </div>
+      `;
+    }
+
+    /**
+     * 드랍률 소수점 6자리 정밀 포맷팅 ('0.000000%')
+     */
+    function formatDropRate6(rate) {
+      return Number(rate || 0).toFixed(6) + '%';
+    }
+
+    /**
+     * 시간당 기대 획득량(exp = KPM * 60 * (rate / 100)) 포맷팅
+     * - 0%일 때: '0.0000 개/시'
+     * - 극소 확률(예: 0.000002%)도 0으로 뭉개지지 않도록 자릿수 자동 보존
+     */
+    function formatHourlyExpected(exp) {
+      if (!exp || exp <= 0) return '0.0000 개/시';
+      if (exp >= 1) {
+        return exp.toLocaleString('ko-KR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' 개/시';
+      }
+      if (exp >= 0.001) {
+        return exp.toFixed(4) + ' 개/시';
+      }
+      if (exp >= 0.00001) {
+        return exp.toFixed(6) + ' 개/시';
+      }
+      return exp.toFixed(7) + ' 개/시';
+    }
+
+    /**
+     * 1개 평균 소요시간(avgMinutes = 1 / (KPM * (rate / 100))) 포맷팅
+     * 초 / 분 / 시간 / 일 단위로 소수점 둘째 자리까지 변환하여 반환합니다.
+     */
+    function formatAvgTimePerOne(rate, kpm) {
+      if (!rate || rate <= 0 || !kpm || kpm <= 0) {
+        return { main: '드랍 없음', sub: '' };
+      }
+
+      const p = rate / 100;
+      const avgMinutes = 1 / (kpm * p);
+
+      if (avgMinutes < 1) {
+        const seconds = avgMinutes * 60;
+        return {
+          main: `${seconds.toFixed(2)}초`,
+          sub: `${avgMinutes.toFixed(2)}분`
+        };
+      }
+
+      if (avgMinutes < 60) {
+        return {
+          main: `${avgMinutes.toFixed(2)}분`,
+          sub: ''
+        };
+      }
+
+      const avgHours = avgMinutes / 60;
+      if (avgHours < 24) {
+        return {
+          main: `${avgHours.toFixed(2)}시간`,
+          sub: `${avgMinutes.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}분`
+        };
+      }
+
+      const avgDays = avgHours / 24;
+      return {
+        main: `${avgDays.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}일`,
+        sub: `총 ${avgHours.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}시간`
+      };
+    }
+
+    /**
+     * 1개 평균 소요 마릿수(avgKills = 1 / (rate / 100)) 포맷팅
+     * 소수점 둘째 자리까지 표시하며, 0%인 경우 '-'를 반환합니다.
+     */
+    function formatAvgKillsPerOne(rate) {
+      if (!rate || rate <= 0) return '-';
+      const p = rate / 100;
+      const avgKills = 1 / p;
+      return avgKills.toLocaleString('ko-KR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + ' 마리';
+    }
+
+    /**
+     * 비간섭 알림 토스트 표시
+     */
+    function showToast(message) {
+      els.toastText.textContent = message;
+      els.toastBox.classList.remove('opacity-0', 'translate-y-2');
+      els.toastBox.classList.add('opacity-100', 'translate-y-0');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        els.toastBox.classList.remove('opacity-100', 'translate-y-0');
+        els.toastBox.classList.add('opacity-0', 'translate-y-2');
+      }, 2000);
+    }
+
+    // =========================================================================
+    // 테마 전환 및 탭 네비게이션
+    // =========================================================================
+
+    function applyTheme() {
+      const root = document.documentElement;
+      if (state.isDark) {
+        root.classList.add('dark');
+        els.themeIcon.className = 'fa-solid fa-sun text-sm text-amber-400';
+      } else {
+        root.classList.remove('dark');
+        els.themeIcon.className = 'fa-solid fa-moon text-sm text-slate-600';
+      }
+    }
+
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      const activeClass = 'flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md shadow-indigo-500/20';
+      const inactiveClass = 'flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+
+      if (tabId === 'tab1') {
+        els.tabBtn1.className = activeClass;
+        els.tabBtn2.className = inactiveClass;
+        els.tabPanel1.classList.remove('hidden');
+        els.tabPanel2.classList.add('hidden');
+      } else {
+        els.tabBtn2.className = activeClass;
+        els.tabBtn1.className = inactiveClass;
+        els.tabPanel2.classList.remove('hidden');
+        els.tabPanel1.classList.add('hidden');
+      }
+    }
+
+    // =========================================================================
+    // [탭 1] 사냥터 드랍 기댓값 계산 렌더링
+    // =========================================================================
+
+    function renderTab1Checklist() {
+      const zone = getZoneById(state.tab1ZoneId);
+      els.tab1ItemChecklist.innerHTML = '';
+
+      CONFIG.items.forEach((itemName) => {
+        const rate = zone.drops[itemName] ?? 0;
+        const isZero = rate <= 0;
+        const isChecked = state.tab1CheckedItems.has(itemName);
+
+        const label = document.createElement('label');
+        const activeStyle = isChecked
+          ? 'border-indigo-500/50 bg-indigo-50/45 dark:bg-indigo-950/25'
+          : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50';
+        const mutedStyle = isZero ? 'opacity-60' : '';
+
+        label.className = `flex items-center justify-between gap-3 p-2.5 rounded-xl border ${activeStyle} ${mutedStyle} hover:border-indigo-400 dark:hover:border-indigo-500/60 cursor-pointer transition select-none`;
+
+        label.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            ${createItemSlotHtml(itemName)}
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                ${escapeHtml(itemName)}
+              </div>
+              <div class="text-[11px] font-mono tabular-nums ${isZero ? 'text-slate-400 dark:text-slate-500' : 'text-cyan-600 dark:text-cyan-400'}">
+                ${formatDropRate6(rate)}
+              </div>
+            </div>
+          </div>
+          <input type="checkbox" ${isChecked ? 'checked' : ''}
+            class="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0">
+        `;
+
+        const checkbox = label.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            state.tab1CheckedItems.add(itemName);
+          } else {
+            state.tab1CheckedItems.delete(itemName);
+          }
+          renderTab1Checklist();
+          renderTab1Table();
+        });
+
+        els.tab1ItemChecklist.appendChild(label);
+      });
+
+      els.tab1SelectedCountBadge.textContent = `${state.tab1CheckedItems.size} / ${CONFIG.items.length}개 선택`;
+    }
+
+    function renderTab1Table() {
+      const zone = getZoneById(state.tab1ZoneId);
+      const kpm = state.tab1Kpm;
+      const hourlyKills = kpm * 60;
+
+      if (els.tab1HourlyKillsText) {
+        els.tab1HourlyKillsText.textContent = `${hourlyKills.toLocaleString('ko-KR')} 마리/시간`;
+      }
+      if (els.tab1BannerHourlyKills) {
+        els.tab1BannerHourlyKills.textContent = `${hourlyKills.toLocaleString('ko-KR')} 마리/시간`;
+      }
+      if (els.tab1ZoneBadge) {
+        els.tab1ZoneBadge.textContent = zone.label;
+      }
+
+      els.tab1ResultTableBody.innerHTML = '';
+
+      const selectedItems = CONFIG.items.filter((name) => state.tab1CheckedItems.has(name));
+
+      if (selectedItems.length === 0) {
+        els.tab1ResultTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-12 text-center text-sm text-slate-400 dark:text-slate-500">
+              <i class="fa-regular fa-square-check text-2xl mb-2 block text-slate-300 dark:text-slate-600"></i>
+              좌측 체크리스트에서 기댓값을 확인할 아이템을 선택해 주세요.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      selectedItems.forEach((itemName) => {
+        const rate = zone.drops[itemName] ?? 0;
+        const isZero = rate <= 0;
+
+        // 중간 반올림 없는 원본 float 연산
+        const expHourly = kpm * 60 * (rate / 100);
+        const avgTime = formatAvgTimePerOne(rate, kpm);
+        const avgKills = formatAvgKillsPerOne(rate);
+
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50/90 dark:hover:bg-slate-800/40 transition ${isZero ? 'opacity-55' : ''}`;
+
+        tr.innerHTML = `
+          <td class="py-3.5 pr-4">
+            <div class="flex items-center gap-3">
+              ${createItemSlotHtml(itemName)}
+              <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                ${escapeHtml(itemName)}
+              </span>
+            </div>
+          </td>
+          <td class="py-3.5 px-3 text-right font-mono text-xs sm:text-sm ${isZero ? 'text-slate-400 dark:text-slate-500' : 'text-cyan-600 dark:text-cyan-400 font-semibold'}">
+            ${formatDropRate6(rate)}
+          </td>
+          <td class="py-3.5 px-3 text-right ${isZero ? 'text-slate-400 dark:text-slate-500 font-medium' : 'text-amber-600 dark:text-amber-400 font-extrabold'}">
+            ${formatHourlyExpected(expHourly)}
+          </td>
+          <td class="py-3.5 px-3 text-right">
+            <div class="${isZero ? 'text-slate-400 dark:text-slate-500 font-medium' : 'text-indigo-600 dark:text-indigo-400 font-bold'}">
+              ${avgTime.main}
+            </div>
+            ${avgTime.sub ? `<div class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">${avgTime.sub}</div>` : ''}
+          </td>
+          <td class="py-3.5 pl-3 text-right font-semibold ${isZero ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}">
+            ${avgKills}
+          </td>
+        `;
+
+        els.tab1ResultTableBody.appendChild(tr);
+      });
+    }
+
+    function updateTab1All() {
+      renderTab1Checklist();
+      renderTab1Table();
+    }
+
+    // =========================================================================
+    // [탭 2] 사냥터별 드랍 기댓값 비교 (A vs B) 렌더링
+    // =========================================================================
+
+    /**
+     * 탭 2 비교표 전용 시간당 기대 획득량('개/시간') 포맷팅
+     */
+    function formatTab2HourlyExp(exp) {
+      if (!exp || exp <= 0) return '0.0000 개/시간';
+      if (exp >= 100) {
+        return exp.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' 개/시간';
+      }
+      if (exp >= 1) {
+        return exp.toFixed(3) + ' 개/시간';
+      }
+      if (exp >= 0.01) {
+        return exp.toFixed(4) + ' 개/시간';
+      }
+      if (exp >= 0.00001) {
+        return exp.toFixed(6) + ' 개/시간';
+      }
+      return exp.toFixed(7) + ' 개/시간';
+    }
+
+    /**
+     * 탭 2 비교표 셀 하단 보조 표기용 1개 평균 소요시간 포맷팅 (예: 약 15.6초, 36.38분, 3시간 52분, 14일 12.3시간)
+     */
+    function formatTab2SubTime(rate, kpm) {
+      if (!rate || rate <= 0 || !kpm || kpm <= 0) return '드랍 없음';
+
+      const mins = 1 / (kpm * (rate / 100));
+      if (mins < 1) {
+        return `약 ${(mins * 60).toFixed(1)}초`;
+      }
+      if (mins < 60) {
+        return `${mins.toFixed(2)}분`;
+      }
+
+      const hours = mins / 60;
+      if (hours < 24) {
+        let h = Math.floor(hours);
+        let m = Math.round(mins - h * 60);
+        if (m === 60) {
+          h += 1;
+          m = 0;
+        }
+        return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
+      }
+
+      let d = Math.floor(hours / 24);
+      let remH = Number((hours - d * 24).toFixed(1));
+      if (remH >= 24) {
+        d += 1;
+        remH = 0;
+      }
+      return remH > 0
+        ? `${d.toLocaleString('ko-KR')}일 ${remH.toFixed(1)}시간`
+        : `${d.toLocaleString('ko-KR')}일`;
+    }
+
+    function updateTab2All() {
+      const zoneA = getZoneById(state.tab2ZoneAId);
+      const zoneB = getZoneById(state.tab2ZoneBId);
+      const kpmA = state.tab2KpmA;
+      const kpmB = state.tab2KpmB;
+
+      const hourlyKillsA = kpmA * 60;
+      const hourlyKillsB = kpmB * 60;
+
+      // 상단 카드 정보 갱신 (생략된 DOM 요소가 있어도 오류가 발생하지 않도록 안전 처리)
+      if (els.tab2ZoneACpText) {
+        els.tab2ZoneACpText.textContent = `요구전투력 ${zoneA.cp}`;
+      }
+      if (els.tab2ZoneBCpText) {
+        els.tab2ZoneBCpText.textContent = `요구전투력 ${zoneB.cp}`;
+      }
+      if (els.tab2HourlyKillsA) {
+        els.tab2HourlyKillsA.textContent = `${hourlyKillsA.toLocaleString('ko-KR')} 마리/시간`;
+      }
+      if (els.tab2HourlyKillsB) {
+        els.tab2HourlyKillsB.textContent = `${hourlyKillsB.toLocaleString('ko-KR')} 마리/시간`;
+      }
+
+      // 비교 테이블 컬럼 헤더 동적 갱신
+      if (els.thExpA) els.thExpA.textContent = `A · ${zoneA.label} 기대 획득`;
+      if (els.thExpB) els.thExpB.textContent = `B · ${zoneB.label} 기대 획득`;
+
+      els.tab2CompareTableBody.innerHTML = '';
+
+      let winCountA = 0;
+      let winCountB = 0;
+      let tieOrZeroCount = 0;
+
+      CONFIG.items.forEach((itemName) => {
+        const rateA = zoneA.drops[itemName] ?? 0;
+        const rateB = zoneB.drops[itemName] ?? 0;
+
+        // 중간 반올림 없이 원본 float로 시간당 기댓값 산출
+        const expA = kpmA * 60 * (rateA / 100);
+        const expB = kpmB * 60 * (rateB / 100);
+
+        const bothZero = expA === 0 && expB === 0;
+        const isEqual = !bothZero && Math.abs(expA - expB) < 1e-15;
+        const aHigher = !bothZero && !isEqual && expA > expB;
+        const bHigher = !bothZero && !isEqual && expB > expA;
+
+        let badgeHtml = '';
+        let winnerSubHtml = '';
+        let expACellBg = '';
+        let expBCellBg = '';
+        let expATextClass = expA === 0
+          ? 'text-slate-400 dark:text-slate-500 font-medium'
+          : 'text-slate-800 dark:text-slate-100 font-bold';
+        let expBTextClass = expB === 0
+          ? 'text-slate-400 dark:text-slate-500 font-medium'
+          : 'text-slate-800 dark:text-slate-100 font-bold';
+
+        if (bothZero) {
+          tieOrZeroCount += 1;
+          badgeHtml = `
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700">
+              드랍 없음
+            </span>
+          `;
+        } else if (isEqual) {
+          tieOrZeroCount += 1;
+          badgeHtml = `
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+              동일 (0.00%)
+            </span>
+          `;
+          winnerSubHtml = `<div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">기댓값 동일</div>`;
+        } else if (aHigher) {
+          winCountA += 1;
+          expACellBg = 'bg-indigo-500/[0.06] dark:bg-indigo-500/[0.08]';
+          expATextClass = 'text-indigo-600 dark:text-indigo-400 font-extrabold';
+          winnerSubHtml = `<div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">${escapeHtml(zoneA.label)} 우세</div>`;
+
+          if (expB === 0) {
+            badgeHtml = `
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
+                A 단독 드랍
+              </span>
+            `;
+          } else {
+            const diffPct = (((expA - expB) / expB) * 100).toFixed(2);
+            badgeHtml = `
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
+                A가 +${diffPct}% 높음
+              </span>
+            `;
+          }
+        } else if (bHigher) {
+          winCountB += 1;
+          expBCellBg = 'bg-cyan-500/[0.06] dark:bg-cyan-500/[0.08]';
+          expBTextClass = 'text-cyan-600 dark:text-cyan-400 font-extrabold';
+          winnerSubHtml = `<div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">${escapeHtml(zoneB.label)} 우세</div>`;
+
+          if (expA === 0) {
+            badgeHtml = `
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+                B 단독 드랍
+              </span>
+            `;
+          } else {
+            const diffPct = (((expB - expA) / expA) * 100).toFixed(2);
+            badgeHtml = `
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+                B가 +${diffPct}% 높음
+              </span>
+            `;
+          }
+        }
+
+        const subInfoA = `${formatDropRate6(rateA)} · ${formatTab2SubTime(rateA, kpmA)}`;
+        const subInfoB = `${formatDropRate6(rateB)} · ${formatTab2SubTime(rateB, kpmB)}`;
+
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50/90 dark:hover:bg-slate-800/40 transition ${bothZero ? 'opacity-55' : ''}`;
+
+        tr.innerHTML = `
+          <td class="py-4 pr-4">
+            <div class="flex items-center gap-3">
+              ${createItemSlotHtml(itemName)}
+              <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                ${escapeHtml(itemName)}
+              </span>
+            </div>
+          </td>
+          <td class="py-4 px-4 text-right ${expACellBg}">
+            <div class="text-sm sm:text-[15px] ${expATextClass}">
+              ${aHigher ? '<i class="fa-solid fa-caret-up text-emerald-500 dark:text-emerald-400 mr-1"></i>' : ''}${formatTab2HourlyExp(expA)}
+            </div>
+            <div class="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1">
+              ${subInfoA}
+            </div>
+          </td>
+          <td class="py-4 px-4 text-right ${expBCellBg}">
+            <div class="text-sm sm:text-[15px] ${expBTextClass}">
+              ${bHigher ? '<i class="fa-solid fa-caret-up text-emerald-500 dark:text-emerald-400 mr-1"></i>' : ''}${formatTab2HourlyExp(expB)}
+            </div>
+            <div class="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1">
+              ${subInfoB}
+            </div>
+          </td>
+          <td class="py-4 pl-4 text-right">
+            <div>${badgeHtml}</div>
+            ${winnerSubHtml}
+          </td>
+        `;
+
+        els.tab2CompareTableBody.appendChild(tr);
+      });
+
+      // 우위 카운트 요약 배지 업데이트
+      els.tab2SummaryBadges.innerHTML = `
+        <span class="px-3 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
+          A 우위 ${winCountA}종
+        </span>
+        <span class="px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+          B 우위 ${winCountB}종
+        </span>
+        <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          동일/미드랍 ${tieOrZeroCount}종
+        </span>
+      `;
+    }
+
+    // =========================================================================
+    // 드롭다운 초기화 및 양방향 입력 이벤트 바인딩
+    // =========================================================================
+
+    function populateAllZoneSelects() {
+      const selects = [els.tab1ZoneSelect, els.tab2ZoneASelect, els.tab2ZoneBSelect];
+      selects.forEach((selectEl) => {
+        selectEl.innerHTML = '';
+        CONFIG.zones.forEach((zone) => {
+          const opt = document.createElement('option');
+          opt.value = zone.id;
+          opt.textContent = zone.label;
+          selectEl.appendChild(opt);
+        });
+      });
+    }
+
+    function getSliderBounds(sliderEl) {
+      const min = sliderEl && sliderEl.min !== '' ? Number(sliderEl.min) : CONFIG.kpmControl.sliderMin;
+      const max = sliderEl && sliderEl.max !== '' ? Number(sliderEl.max) : CONFIG.kpmControl.sliderMax;
+      return { min, max };
+    }
+
+    function syncInputsFromState() {
+      const bounds1 = getSliderBounds(els.tab1KpmSlider);
+      const boundsA = getSliderBounds(els.tab2KpmASlider);
+      const boundsB = getSliderBounds(els.tab2KpmBSlider);
+
+      els.tab1ZoneSelect.value = state.tab1ZoneId;
+      els.tab1KpmInput.value = state.tab1Kpm;
+      els.tab1KpmSlider.value = Math.max(bounds1.min, Math.min(bounds1.max, state.tab1Kpm));
+
+      els.tab2ZoneASelect.value = state.tab2ZoneAId;
+      els.tab2KpmAInput.value = state.tab2KpmA;
+      els.tab2KpmASlider.value = Math.max(boundsA.min, Math.min(boundsA.max, state.tab2KpmA));
+
+      els.tab2ZoneBSelect.value = state.tab2ZoneBId;
+      els.tab2KpmBInput.value = state.tab2KpmB;
+      els.tab2KpmBSlider.value = Math.max(boundsB.min, Math.min(boundsB.max, state.tab2KpmB));
+    }
+
+    /**
+     * KPM 직접 입력창(1 ~ 1,000)과 각 슬라이더의 min/max 범위 양방향 실시간 연동
+     */
+    function bindKpmControls(sliderEl, inputEl, fallbackVal, onChangeCallback) {
+      const { inputMin, inputMax } = CONFIG.kpmControl;
+      const { min: sliderMin, max: sliderMax } = getSliderBounds(sliderEl);
+
+      sliderEl.addEventListener('input', (e) => {
+        const val = Number(e.target.value);
+        inputEl.value = val;
+        onChangeCallback(val);
+      });
+
+      inputEl.addEventListener('input', (e) => {
+        const raw = parseFloat(e.target.value);
+        if (isNaN(raw) || raw < inputMin) return;
+        const clamped = Math.min(inputMax, Math.max(inputMin, Math.round(raw)));
+        sliderEl.value = Math.max(sliderMin, Math.min(sliderMax, clamped));
+        onChangeCallback(clamped);
+      });
+
+      inputEl.addEventListener('blur', () => {
+        const raw = parseFloat(inputEl.value);
+        const valid = (isNaN(raw) || raw < inputMin)
+          ? fallbackVal
+          : Math.min(inputMax, Math.max(inputMin, Math.round(raw)));
+        inputEl.value = valid;
+        sliderEl.value = Math.max(sliderMin, Math.min(sliderMax, valid));
+        onChangeCallback(valid);
+      });
+    }
+
+    function bindEvents() {
+      // 다크/라이트 테마 토글
+      els.themeToggleBtn.addEventListener('click', () => {
+        state.isDark = !state.isDark;
+        applyTheme();
+      });
+
+      // 전체 초기화 버튼
+      els.resetBtn.addEventListener('click', () => {
+        state.tab1ZoneId = CONFIG.defaults.tab1ZoneId;
+        state.tab1Kpm = CONFIG.defaults.tab1Kpm;
+        state.tab1CheckedItems = new Set(CONFIG.items);
+
+        state.tab2ZoneAId = CONFIG.defaults.tab2ZoneAId;
+        state.tab2KpmA = CONFIG.defaults.tab2KpmA;
+        state.tab2ZoneBId = CONFIG.defaults.tab2ZoneBId;
+        state.tab2KpmB = CONFIG.defaults.tab2KpmB;
+
+        syncInputsFromState();
+        updateTab1All();
+        updateTab2All();
+        showToast('모든 사냥터 선택과 KPM 설정이 기본값으로 초기화되었습니다.');
+      });
+
+      // 상단 탭 전환
+      els.tabBtn1.addEventListener('click', () => switchTab('tab1'));
+      els.tabBtn2.addEventListener('click', () => switchTab('tab2'));
+
+      // [탭 1] 사냥터 변경 및 KPM 연동
+      els.tab1ZoneSelect.addEventListener('change', (e) => {
+        state.tab1ZoneId = e.target.value;
+        updateTab1All();
+      });
+
+      bindKpmControls(els.tab1KpmSlider, els.tab1KpmInput, CONFIG.defaults.tab1Kpm, (val) => {
+        state.tab1Kpm = val;
+        renderTab1Table();
+      });
+
+      // [탭 1] 체크리스트 일괄 선택 / 해제 / 드랍 품목만 선택
+      els.btnSelectAll.addEventListener('click', () => {
+        state.tab1CheckedItems = new Set(CONFIG.items);
+        updateTab1All();
+      });
+
+      els.btnSelectNone.addEventListener('click', () => {
+        state.tab1CheckedItems.clear();
+        updateTab1All();
+      });
+
+      els.btnSelectNonZero.addEventListener('click', () => {
+        const zone = getZoneById(state.tab1ZoneId);
+        state.tab1CheckedItems.clear();
+        CONFIG.items.forEach((itemName) => {
+          if ((zone.drops[itemName] ?? 0) > 0) {
+            state.tab1CheckedItems.add(itemName);
+          }
+        });
+        updateTab1All();
+      });
+
+      // [탭 2] 사냥터 A / B 변경, KPM 연동, A ⇄ B 스왑
+      els.tab2ZoneASelect.addEventListener('change', (e) => {
+        state.tab2ZoneAId = e.target.value;
+        updateTab2All();
+      });
+
+      els.tab2ZoneBSelect.addEventListener('change', (e) => {
+        state.tab2ZoneBId = e.target.value;
+        updateTab2All();
+      });
+
+      bindKpmControls(els.tab2KpmASlider, els.tab2KpmAInput, CONFIG.defaults.tab2KpmA, (val) => {
+        state.tab2KpmA = val;
+        updateTab2All();
+      });
+
+      bindKpmControls(els.tab2KpmBSlider, els.tab2KpmBInput, CONFIG.defaults.tab2KpmB, (val) => {
+        state.tab2KpmB = val;
+        updateTab2All();
+      });
+
+      els.swapZonesBtn.addEventListener('click', () => {
+        const tempZone = state.tab2ZoneAId;
+        const tempKpm = state.tab2KpmA;
+
+        state.tab2ZoneAId = state.tab2ZoneBId;
+        state.tab2KpmA = state.tab2KpmB;
+        state.tab2ZoneBId = tempZone;
+        state.tab2KpmB = tempKpm;
+
+        syncInputsFromState();
+        updateTab2All();
+        showToast('사냥터 A와 사냥터 B의 조건을 맞바꾸었습니다.');
+      });
+    }
+
+    // 페이지 로드 시 초기화 실행
+    window.onload = function () {
+      applyTheme();
+      populateAllZoneSelects();
+      syncInputsFromState();
+      switchTab('tab1');
+      bindEvents();
+      updateTab1All();
+      updateTab2All();
+    };
+  </script>
+</body>
+</html>
